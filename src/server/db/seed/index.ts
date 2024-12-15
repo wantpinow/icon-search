@@ -3,6 +3,7 @@ export const { conn, db } = initializePg();
 
 export const seed = async () => {
   console.time("DB has been seeded!");
+
   console.timeEnd("DB has been seeded!");
 };
 

@@ -1,0 +1,1 @@
+ALTER TABLE "iconsearch_icon_version" ADD COLUMN "type" "icon_type" NOT NULL;

@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS "vocabEmbeddingIndex" ON "iconsearch_icon" USING hnsw ("embedding" vector_cosine_ops);

@@ -1,0 +1,1 @@
+ALTER TABLE "iconsearch_icon" ADD COLUMN "embedding" vector(1536);

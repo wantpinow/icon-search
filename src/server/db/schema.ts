@@ -1,14 +1,20 @@
-import { type InferSelectModel, sql } from "drizzle-orm";
+import { type InferSelectModel, relations, sql } from "drizzle-orm";
 import {
   foreignKey,
+  index,
+  integer,
+  pgEnum,
   pgTableCreator,
+  primaryKey,
   text,
   timestamp,
   uuid,
   varchar,
+  vector,
 } from "drizzle-orm/pg-core";
 
 import { PG_TABLE_PREFIX } from "~/server";
+import { ICON_TYPES } from "~/types/icons";
 
 export const createTable = pgTableCreator(
   (name) => `${PG_TABLE_PREFIX}${name}`,
@@ -65,6 +71,82 @@ export const sessionTable = createTable(
         .onUpdate("cascade"),
     };
   },
+);
+
+// Icons
+export const iconTypeEnum = pgEnum("icon_type", ICON_TYPES);
+export const iconTable = createTable(
+  "icon",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    type: iconTypeEnum("type").notNull(),
+    name: text("name").notNull(),
+    embedding: vector("embedding", { dimensions: 1536 }).notNull(),
+  },
+  (table) => {
+    return {
+      typeIndex: index("icon_type_index").on(table.type),
+      embeddingIndex: index("vocabEmbeddingIndex").using(
+        "hnsw",
+        table.embedding.op("vector_cosine_ops"),
+      ),
+    };
+  },
+);
+
+export const iconTableRelations = relations(iconTable, ({ many }) => ({
+  versions: many(iconVersionTable),
+}));
+
+export const packageVersionTable = createTable(
+  "package_version",
+  {
+    type: iconTypeEnum("type").notNull(),
+    version: text("version").notNull(),
+    versionNumber: integer("version_number").notNull(),
+  },
+  (table) => {
+    return {
+      pk: primaryKey({ columns: [table.type, table.version] }),
+    };
+  },
+);
+
+export const packageVersionTableRelations = relations(
+  packageVersionTable,
+  ({ many }) => ({
+    icons: many(iconVersionTable),
+  }),
+);
+
+export const iconVersionTable = createTable(
+  "icon_version",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    type: iconTypeEnum("type").notNull(),
+    iconId: uuid("icon_id").notNull(),
+    rangeStart: integer("range_start").notNull(),
+    rangeEnd: integer("range_end").notNull(),
+  },
+  (table) => {
+    return {
+      iconReference: foreignKey({
+        columns: [table.iconId],
+        foreignColumns: [iconTable.id],
+        name: "icon_version_icon_fkey",
+      }),
+    };
+  },
+);
+
+export const iconVersionTableRelations = relations(
+  iconVersionTable,
+  ({ one }) => ({
+    icon: one(iconTable, {
+      fields: [iconVersionTable.iconId],
+      references: [iconTable.id],
+    }),
+  }),
 );
 
 // Types

@@ -1,0 +1,1 @@
+ALTER TABLE "iconsearch_icon_version" ADD COLUMN "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL;
