@@ -1,0 +1,73 @@
+name: Deploy Production
+
+on:
+  push:
+    branches:
+      - "main"
+
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+  NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+  NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+  NEON_MAIN_BRANCH_NAME: ${{ secrets.NEON_MAIN_BRANCH_NAME }}
+  NEON_DATABASE_NAME: ${{ secrets.NEON_DATABASE_NAME }}
+  NEON_DATABASE_USERNAME: ${{ secrets.NEON_DATABASE_USERNAME }}
+  OAUTH_GITHUB_CLIENT_ID: ${{ secrets.OAUTH_GITHUB_CLIENT_ID }}
+  OAUTH_GITHUB_CLIENT_SECRET: ${{ secrets.OAUTH_GITHUB_CLIENT_SECRET }}
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  HOST: ${{ secrets.HOST }}
+
+jobs:
+  deploy-production:
+    permissions: write-all
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install
+
+      - name: Install neonctl
+        run: npm i -g neonctl@1
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel Environment Information
+        run: vercel pull --yes --environment=production --token=${{ env.VERCEL_TOKEN }}
+
+      - name: Prepare $GITHUB_ENV
+        run: |
+          echo "DIRECT_URL=$(neonctl --api-key ${{ env.NEON_API_KEY }} --project-id ${{ env.NEON_PROJECT_ID }} connection-string ${{ env.NEON_MAIN_BRANCH_NAME }})" >> $GITHUB_ENV
+          echo "DATABASE_URL=$(neonctl --api-key ${{ env.NEON_API_KEY }} --pooled --project-id ${{ env.NEON_PROJECT_ID }} connection-string ${{ env.NEON_MAIN_BRANCH_NAME }})" >> $GITHUB_ENV
+
+      - name: Run Drizzle Migration
+        run: |
+          bun run --env-file=$GITHUB_ENV db:migrate
+
+      - name: Build and Deploy to Vercel
+        id: deploy
+        run: |
+          # Create .env.local file
+          touch .env.local
+          echo DATABASE_URL=${{ env.DATABASE_URL }} >> .env.local
+          echo OAUTH_GITHUB_CLIENT_ID=${{ env.OAUTH_GITHUB_CLIENT_ID }} >> .env.local
+          echo OAUTH_GITHUB_CLIENT_SECRET=${{ env.OAUTH_GITHUB_CLIENT_SECRET }} >> .env.local
+          echo OPENAI_API_KEY=${{ env.OPENAI_API_KEY }} >> .env.local
+          echo HOST=${{ env.HOST }} >> .env.local
+
+          # Deploy to Vercel
+          preview_url=$(eval "vercel deploy --prod --token=${{ env.VERCEL_TOKEN }} $(grep -v '^#' .env.local | grep '=' | awk '{print "-e " $0 " -b " $0}' | tr '\n' ' ')")
+          if [ $? -eq 0 ]; then
+            echo "preview_url=${preview_url}" >> $GITHUB_OUTPUT
+          else
+            echo "Vercel deploy failed"
+            exit 1
+          fi
