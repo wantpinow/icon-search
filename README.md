@@ -11,10 +11,10 @@ Code for icon-search.com, an open source icon search engine.
 V1
 - [x] Buy icon-search.com domain
 - [ ] Skeleton shadcn/ui app (select a nav bar and start there)
-- [ ] Deploy to Vercel
+- [x] Deploy to Vercel
 - [x] Create new Neon db
-- [ ] Setup drizzle and CI/CD
-- [ ] Create a new Github oauth app
+- [x] Setup drizzle and CI/CD
+- [x] Create a new Github oauth app
 - [ ] Setup Auth with lucia
 - [ ] Design db schema
   - [ ] Users
