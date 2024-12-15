@@ -1,5 +1,5 @@
 import { db } from "~/server/db";
-import { User, userTable } from "~/server/db/schema";
+import { type User, userTable } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
 
 export async function getUserFromGitHubId(

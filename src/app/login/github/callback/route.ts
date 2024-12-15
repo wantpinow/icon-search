@@ -14,7 +14,7 @@ export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
-  const cookieStore = await cookies();
+  const cookieStore = cookies();
   const storedState = cookieStore.get("github_oauth_state")?.value ?? null;
   if (code === null || state === null || storedState === null) {
     return new Response(null, {
@@ -30,7 +30,7 @@ export async function GET(request: Request): Promise<Response> {
   let tokens: OAuth2Tokens;
   try {
     tokens = await github.validateAuthorizationCode(code);
-  } catch (e) {
+  } catch {
     // Invalid code or client credentials
     return new Response(null, {
       status: 400,
@@ -41,7 +41,8 @@ export async function GET(request: Request): Promise<Response> {
       Authorization: `Bearer ${tokens.accessToken()}`,
     },
   });
-  const githubUser = await githubUserResponse.json();
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+  const githubUser: GitHubUser = await githubUserResponse.json();
   const githubUserId = githubUser.id;
   const githubUsername = githubUser.login;
   const githubEmail = githubUser.email;
@@ -75,4 +76,10 @@ export async function GET(request: Request): Promise<Response> {
       Location: "/",
     },
   });
+}
+
+interface GitHubUser {
+  id: number;
+  email: string;
+  login: string;
 }

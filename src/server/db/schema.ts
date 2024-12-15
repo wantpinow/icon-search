@@ -1,17 +1,11 @@
-import { InferSelectModel, relations, sql } from "drizzle-orm";
+import { type InferSelectModel, sql } from "drizzle-orm";
 import {
   foreignKey,
-  index,
-  integer,
-  jsonb,
-  pgEnum,
   pgTableCreator,
-  primaryKey,
   text,
   timestamp,
   uuid,
   varchar,
-  vector,
 } from "drizzle-orm/pg-core";
 
 import { PG_TABLE_PREFIX } from "~/server";
