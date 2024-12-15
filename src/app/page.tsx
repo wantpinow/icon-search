@@ -1,5 +1,6 @@
 import { logout } from "~/lib/actions";
 import { auth } from "~/lib/validate";
+import { SuggestIcons } from "./_components/suggest-icons";
 
 export default async function HomePage() {
   const { user } = await auth();
@@ -7,6 +8,7 @@ export default async function HomePage() {
     "use server";
     await logout();
   };
+
   return (
     <div>
       {user ? (
@@ -22,6 +24,7 @@ export default async function HomePage() {
           Please <a href="/login">sign in</a>.
         </div>
       )}
+      <SuggestIcons />
     </div>
   );
 }
