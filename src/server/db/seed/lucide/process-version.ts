@@ -1,5 +1,5 @@
 import { and, desc, eq, gte, inArray, lt, lte, sql } from "drizzle-orm";
-import { embedMany } from "ai";
+import { embedMany, generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
 
 import {
@@ -10,8 +10,20 @@ import {
 import { IconType } from "~/types/icons";
 import { db } from "~/server/db";
 
-// @ts-ignore (sometimes not typed)
-import lucide from "lucide";
+import * as lucide from "lucide-react";
+
+// remove anything from `lucide` that doesn't start with an uppercase letter
+let lucideIcons: string[];
+if (lucide.icons) {
+  console.log("lucide.icons");
+  lucideIcons = Object.keys(lucide.icons);
+} else {
+  console.log("lucide");
+  lucideIcons = Object.keys(lucide).filter(
+    // @ts-expect-error
+    (key) => key[0] === key[0].toUpperCase(),
+  );
+}
 
 const args = process.argv.slice(2); // Get just the custom arguments
 
@@ -34,6 +46,21 @@ const embedTexts = async (texts: string[]) => {
   return embeddings.embeddings;
 };
 
+const getIconDescriptions = async (icons: string[]) => {
+  return icons;
+
+  // Generate a concise, use-case-driven description for the Lucide icon "Pencil". Focus on the practical applications or scenarios where this icon would be used, rather than an in-depth visual description of the icon itself. Ensure the description is rich in potential search query relevance, emphasizing the icon’s function or purpose in real-world contexts. For example, describe how or where the icon might be applied in user interfaces, documentation, or designs.
+  const descriptions = [];
+  for (const icon of icons) {
+    const res = await generateText({
+      model: openai.chat("gpt-4o-mini"),
+      prompt: `Generate a concise, use-case-driven description for the Lucide icon "${icon}". Focus on the practical applications or scenarios where this icon would be used, rather than an in-depth visual description of the icon itself. Ensure the description is rich in potential search query relevance, emphasizing the icon’s function or purpose in real-world contexts. For example, describe how or where the icon might be applied in user interfaces, documentation, or designs.`,
+      maxTokens: 256,
+    });
+    descriptions.push(res.text);
+  }
+  return descriptions;
+};
 const processLucideIcons = async (type: IconType, version: string) => {
   // check this version has already been processed
   const existingVersion = await db.query.packageVersionTable.findFirst({
@@ -62,16 +89,13 @@ const processLucideIcons = async (type: IconType, version: string) => {
     });
 
     const iconNamesDb = iconsInVersion.map((i) => i.icon.name);
-    const iconsNamesLucide = Object.keys(lucide.icons);
 
-    const iconsNotInDb = iconsNamesLucide.filter(
+    const iconsNotInDb = lucideIcons.filter(
       (icon) => !iconNamesDb.includes(icon),
     );
-    if (
-      iconsNotInDb.length > 0 ||
-      iconNamesDb.length !== iconsNamesLucide.length
-    ) {
+    if (iconsNotInDb.length > 0 || iconNamesDb.length !== lucideIcons.length) {
       console.log(iconsNotInDb);
+      console.log(iconNamesDb.length, lucideIcons.length);
     }
 
     return;
@@ -91,19 +115,19 @@ const processLucideIcons = async (type: IconType, version: string) => {
     versionNumber,
   });
 
-  // get the icons in this version
-  const icons = Object.keys(lucide.icons);
-
   // find all icons in the db and not in the db
   const existingIcons = await db.query.iconTable.findMany({
-    where: and(eq(iconTable.type, type), inArray(iconTable.name, icons)),
+    where: and(eq(iconTable.type, type), inArray(iconTable.name, lucideIcons)),
   });
-  const newIconsToInsert = icons.filter(
+  const newIconsToInsert = lucideIcons.filter(
     (icon) => !existingIcons.map((i) => i.name).includes(icon),
   );
 
   // get embeddings of new icons
   const newIconsEmbeddings = await embedTexts(newIconsToInsert);
+
+  // get descriptions of new icons
+  const newIconsDescriptions = await getIconDescriptions(newIconsToInsert);
 
   // insert the new icons
   const newIcons =
@@ -116,6 +140,7 @@ const processLucideIcons = async (type: IconType, version: string) => {
               type: type,
               name: icon,
               embedding: newIconsEmbeddings[index]!,
+              description: newIconsDescriptions[index]!,
             })),
           )
           .returning();

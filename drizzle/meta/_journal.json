@@ -71,6 +71,20 @@
       "when": 1734290615200,
       "tag": "0009_last_sabra",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1734296831329,
+      "tag": "0010_rapid_zaran",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1734390861689,
+      "tag": "0011_abnormal_talon",
+      "breakpoints": true
     }
   ]
 }

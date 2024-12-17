@@ -1,1 +1,1 @@
-src/server/db/seed/vocab/**/*.json filter=lfs diff=lfs merge=lfs -text
+src/server/db/seed/*.sql filter=lfs diff=lfs merge=lfs -text

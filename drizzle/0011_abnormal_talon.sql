@@ -1,0 +1,1 @@
+ALTER TYPE "icon_type" ADD VALUE 'lucide-react';

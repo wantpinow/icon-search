@@ -128,6 +128,9 @@ export const Icon = ({
       </svg>
     );
   } else {
+    if (!(name in icons)) {
+      name = "CircleHelp";
+    }
     return <LucideIcon name={name} className={className} size={size} />;
   }
 };

@@ -81,6 +81,7 @@ export const iconTable = createTable(
     id: uuid("id").defaultRandom().primaryKey(),
     type: iconTypeEnum("type").notNull(),
     name: text("name").notNull(),
+    description: text("description").notNull(),
     embedding: vector("embedding", { dimensions: 1536 }).notNull(),
   },
   (table) => {
@@ -110,13 +111,6 @@ export const packageVersionTable = createTable(
       pk: primaryKey({ columns: [table.type, table.version] }),
     };
   },
-);
-
-export const packageVersionTableRelations = relations(
-  packageVersionTable,
-  ({ many }) => ({
-    icons: many(iconVersionTable),
-  }),
 );
 
 export const iconVersionTable = createTable(
