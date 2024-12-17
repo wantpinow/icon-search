@@ -26,6 +26,7 @@ import {
 import { Switch } from "~/components/ui/switch";
 import { Label } from "~/components/ui/label";
 import type { LucideIconName } from "~/components/ui/icon";
+import { RadioGroup, RadioGroupItem } from "~/components/ui/radio-group";
 
 export function SuggestIconsForm({
   versions,
@@ -120,26 +121,20 @@ export function SuggestIconsForm({
           />
         </div>
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <FormField
-              control={form.control}
-              name="advanced"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <Switch
-                      id="advanced-search"
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            <Label htmlFor="advanced-search" className="font-normal">
-              Advanced Search
-            </Label>
-          </div>
+          <RadioGroup defaultValue="comfortable">
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="default" id="r1" />
+              <Label htmlFor="r1">Semantic Search</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="comfortable" id="r2" />
+              <Label htmlFor="r2">+ Top-1 Reranking</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="compact" id="r3" />
+              <Label htmlFor="r3">+ Top-K Reranking</Label>
+            </div>
+          </RadioGroup>
           <Button
             loading={isExecuting}
             type="submit"

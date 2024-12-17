@@ -35,7 +35,7 @@ jobs:
         run: bun install
 
       - name: Install neonctl
-        run: npm i -g neonctl@1
+        run: npm i -g neonctl
 
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
