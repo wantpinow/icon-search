@@ -1,15 +1,14 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-import { fromZodError } from "zod-validation-error";
-import { ZodError } from "zod";
+import { type z } from "zod";
 
 import { suggestIconsAction } from "~/server/actions/icons/suggest";
-import { suggestIconsSchema } from "~/server/actions/icons/schemas";
+import { type suggestIconsSchema } from "~/server/actions/icons/schemas";
 
 // Helper function for auth check
 function checkAuth(headersList: Headers) {
   const authorization = headersList.get("authorization");
-  if (!authorization || !authorization.startsWith("Bearer ")) {
+  if (!authorization?.startsWith("Bearer ")) {
     return NextResponse.json(
       { error: "Unauthorized - Missing or invalid bearer token" },
       { status: 401 },
@@ -26,19 +25,28 @@ function checkAuth(headersList: Headers) {
   return null;
 }
 
-const parseValidationErrors = (errors: any) => {
+interface ValidationError {
+  _errors?: string[];
+  [key: string]: ValidationError | string[] | undefined;
+}
+
+const parseValidationErrors = (errors: ValidationError): string => {
   if (errors._errors) {
     return errors._errors.join(", ");
   }
   for (const key in errors) {
-    if (errors[key]._errors) {
-      return errors[key]._errors.join(", ");
+    const value = errors[key];
+    if (Array.isArray(value)) {
+      return value.join(", ");
+    }
+    if (value && typeof value === "object" && "_errors" in value) {
+      return value._errors?.join(", ") ?? "Unknown error";
     }
   }
   return "Unknown error";
 };
 
-const parseBindArgsValidationErrors = (errors: readonly []) => {
+const parseBindArgsValidationErrors = (errors: readonly string[]) => {
   return errors.join(", ");
 };
 
@@ -47,8 +55,10 @@ export async function POST(request: Request) {
   const headersList = headers();
   const authError = checkAuth(headersList);
   if (authError) return authError;
-  const body = await request.json();
+
+  const body = (await request.json()) as z.infer<typeof suggestIconsSchema>;
   const result = await suggestIconsAction(body);
+
   if (result?.bindArgsValidationErrors !== undefined) {
     return NextResponse.json(
       {
