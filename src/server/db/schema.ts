@@ -3,6 +3,7 @@ import {
   foreignKey,
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTableCreator,
   primaryKey,
@@ -141,6 +142,33 @@ export const iconVersionTableRelations = relations(
       references: [iconTable.id],
     }),
   }),
+);
+
+export const iconSuggestionRequestsTable = createTable(
+  "icon_suggestion_requests",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    datetime: timestamp("datetime", {
+      withTimezone: true,
+    })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    ipAddress: text("ip_address").notNull(),
+    query: text("query").notNull(),
+    mode: text("mode").notNull(),
+    type: iconTypeEnum("type").notNull(),
+    versionNumber: integer("version_number").notNull(),
+    limit: integer("limit").notNull(),
+    result: jsonb("results").notNull(),
+  },
+  (table) => {
+    return {
+      // create an index on the datetime column
+      datetimeIndex: index("datetime_index").on(table.datetime),
+      // create an index on the ipAddress column
+      ipAddressIndex: index("ip_address_index").on(table.ipAddress),
+    };
+  },
 );
 
 // Types

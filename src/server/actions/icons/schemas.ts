@@ -11,7 +11,7 @@ export const suggestIconsSchema = z.object({
     .max(50, "Limit must be at most 50")
     .optional()
     .default(5),
-  advanced: z.boolean().optional().default(false),
+  mode: z.enum(["semantic", "top-1", "top-k"]).optional().default("top-1"),
 });
 
 export const getVersionsSchema = z.object({

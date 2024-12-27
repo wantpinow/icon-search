@@ -15,7 +15,7 @@ export function SuggestIcons({ versions }: { versions: string[] }) {
   const [loading, setLoading] = useState(false);
   return (
     <div className="mx-auto w-full md:max-w-xl">
-      <div className="mb-8 rounded-lg bg-white/20 p-6 shadow-md backdrop-blur-lg">
+      <div className="mb-8 rounded-lg bg-accent/60 p-6 shadow-md backdrop-blur-lg">
         <SuggestIconsForm
           versions={versions}
           setIcons={setIcons}
@@ -62,7 +62,7 @@ export function SuggestIcons({ versions }: { versions: string[] }) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.5 }}
-                className="mb-8 rounded-lg bg-accent p-6 text-center text-accent-foreground backdrop-blur-lg"
+                className="mb-8 rounded-lg bg-accent/60 p-6 text-center text-accent-foreground backdrop-blur-lg"
               >
                 <h2 className="mb-4 text-2xl font-medium">Suggested Icon</h2>
                 <div

@@ -3,11 +3,11 @@
 import { desc, eq } from "drizzle-orm";
 
 import { db } from "~/server/db";
-import { authenticatedAction } from "~/server/actions";
+import { publicAction } from "~/server/actions";
 import { getVersionsSchema } from "./schemas";
 import { packageVersionTable } from "~/server/db/schema";
 
-export const getVersionsAction = authenticatedAction
+export const getVersionsAction = publicAction
   .schema(getVersionsSchema)
   .action(async ({ parsedInput: { type } }) => {
     const versions = await db.query.packageVersionTable.findMany({

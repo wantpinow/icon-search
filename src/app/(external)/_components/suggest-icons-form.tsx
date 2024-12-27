@@ -7,6 +7,7 @@ import {
   FormControl,
   FormField,
   FormItem,
+  FormLabel,
   FormMessage,
 } from "~/components/ui/form";
 import { Input } from "~/components/ui/input";
@@ -23,8 +24,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import { Switch } from "~/components/ui/switch";
-import { Label } from "~/components/ui/label";
 import type { LucideIconName } from "~/components/ui/icon";
 import { RadioGroup, RadioGroupItem } from "~/components/ui/radio-group";
 
@@ -44,7 +43,7 @@ export function SuggestIconsForm({
       version: versions[0],
       query: "",
       limit: 9,
-      advanced: true,
+      mode: "top-1",
     },
   });
 
@@ -70,7 +69,7 @@ export function SuggestIconsForm({
       version: values.version,
       query: values.query,
       limit: values.limit,
-      advanced: values.advanced,
+      mode: values.mode,
     });
   }
 
@@ -120,21 +119,48 @@ export function SuggestIconsForm({
             )}
           />
         </div>
-        <div className="flex items-center justify-between">
-          <RadioGroup defaultValue="comfortable">
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="default" id="r1" />
-              <Label htmlFor="r1">Semantic Search</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="comfortable" id="r2" />
-              <Label htmlFor="r2">+ Top-1 Reranking</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="compact" id="r3" />
-              <Label htmlFor="r3">+ Top-K Reranking</Label>
-            </div>
-          </RadioGroup>
+        <div className="mb-4 flex flex-col items-end justify-between gap-4 md:flex-row">
+          <FormField
+            control={form.control}
+            name="mode"
+            render={({ field }) => (
+              <FormItem className="space-y-3">
+                <FormControl>
+                  <RadioGroup
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    className="flex flex-col space-y-1"
+                  >
+                    <FormItem className="flex items-center space-x-3 space-y-0">
+                      <FormControl>
+                        <RadioGroupItem value="semantic" />
+                      </FormControl>
+                      <FormLabel className="font-normal">
+                        Semantic Search
+                      </FormLabel>
+                    </FormItem>
+                    <FormItem className="flex items-center space-x-3 space-y-0">
+                      <FormControl>
+                        <RadioGroupItem value="top-1" />
+                      </FormControl>
+                      <FormLabel className="font-normal">
+                        Top-1 Reranking
+                      </FormLabel>
+                    </FormItem>
+                    <FormItem className="flex items-center space-x-3 space-y-0">
+                      <FormControl>
+                        <RadioGroupItem value="top-k" />
+                      </FormControl>
+                      <FormLabel className="font-normal">
+                        Top-K Reranking
+                      </FormLabel>
+                    </FormItem>
+                  </RadioGroup>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           <Button
             loading={isExecuting}
             type="submit"

@@ -85,6 +85,13 @@
       "when": 1734390861689,
       "tag": "0011_abnormal_talon",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1735325480512,
+      "tag": "0012_giant_scarecrow",
+      "breakpoints": true
     }
   ]
 }
