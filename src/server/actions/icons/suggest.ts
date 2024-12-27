@@ -20,9 +20,9 @@ export async function getIPAddress() {
   return headers().get("x-forwarded-for");
 }
 
-// 5 requests per minute for unauthenticated requests
+// 10 requests per minute for unauthenticated requests
 const UNAUTHENTICATED_REQUEST_TIME_FRAME = 60;
-const UNAUTHENTICATED_REQUEST_LIMIT = 3;
+const UNAUTHENTICATED_REQUEST_LIMIT = 10;
 
 export const suggestIconsAction = publicAction
   .schema(suggestIconsSchema)

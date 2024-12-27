@@ -76,7 +76,7 @@ export function SuggestIconsForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)}>
-        <div className="mb-4 flex flex-col items-start justify-between gap-4 md:flex-row">
+        <div className="flex items-start justify-between gap-4">
           <FormField
             control={form.control}
             name="query"
@@ -119,7 +119,7 @@ export function SuggestIconsForm({
             )}
           />
         </div>
-        <div className="mb-4 flex flex-col items-end justify-between gap-4 md:flex-row">
+        <div className="my-4 flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <FormField
             control={form.control}
             name="mode"

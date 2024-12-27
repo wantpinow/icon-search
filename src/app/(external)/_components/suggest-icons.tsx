@@ -3,12 +3,14 @@
 import { Icon } from "~/components/ui/icon";
 import type { LucideIconName } from "~/components/ui/icon";
 import { SuggestIconsForm } from "./suggest-icons-form";
-import { useState } from "react";
+import React, { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { AnimatePresence } from "framer-motion";
 import { icons as lucideIcons } from "lucide-react";
+import useClipboard from "react-use-clipboard";
 import { cn } from "~/lib/utils";
+import { toast } from "sonner";
 
 export function SuggestIcons({ versions }: { versions: string[] }) {
   const [icons, setIcons] = useState<LucideIconName[] | null>(null);
@@ -71,7 +73,10 @@ export function SuggestIcons({ versions }: { versions: string[] }) {
                   )}
                 >
                   <div className="inline-block">
-                    <Icon name={icons[0]} className="mb-2 h-16 w-16" />
+                    <IconWithClipboard
+                      name={icons[0]}
+                      className="mb-2 h-16 w-16"
+                    />
                   </div>
                   <p className="text-lg font-light">{icons[0]}</p>
                 </div>
@@ -89,7 +94,7 @@ export function SuggestIcons({ versions }: { versions: string[] }) {
                     !(iconName in lucideIcons) && "text-destructive",
                   )}
                 >
-                  <Icon name={iconName} className="mb-2 h-8 w-8" />
+                  <IconWithClipboard name={iconName} className="mb-2 h-8 w-8" />
                   <span className="mt-1 text-center text-xs font-light">
                     {iconName}
                   </span>
@@ -109,3 +114,30 @@ export function SuggestIcons({ versions }: { versions: string[] }) {
     </div>
   );
 }
+
+const IconWithClipboard = ({
+  name,
+  className,
+}: {
+  name: LucideIconName;
+  className?: string;
+}) => {
+  const [, setCopied] = useClipboard(name, {
+    successDuration: 2000,
+  });
+
+  const handleClick = () => {
+    setCopied();
+    toast.success(`Copied "${name}" to clipboard`);
+  };
+
+  return (
+    <div
+      onClick={handleClick}
+      className="cursor-pointer transition-opacity hover:opacity-60"
+      title={`Click to copy "${name}"`}
+    >
+      <Icon name={name} className={className} />
+    </div>
+  );
+};
