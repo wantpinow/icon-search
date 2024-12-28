@@ -22,6 +22,9 @@ jobs:
   deploy-production:
     permissions: write-all
     runs-on: ubuntu-latest
+    environment:
+      name: Preview
+      url: ${{ steps.deploy.outputs.preview_url }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -71,21 +74,3 @@ jobs:
             echo "Vercel deploy failed"
             exit 1
           fi
-          
-      - name: Create Production Release
-        if: success()
-        run: |
-          # Get current date in YYYY-MM-DD format
-          DATE=$(date +'%Y-%m-%d')
-          # Create a tag with format v-YYYY-MM-DD-HHMMSS
-          TAG="v${DATE}-$(date +'%H%M%S')"
-          
-          # Create an annotated tag with deployment info
-          git tag -a $TAG -m "Production deployment on ${DATE}"
-          git push origin $TAG
-          
-          # Create GitHub release
-          gh release create $TAG \
-            --title "Production Release ${TAG}" \
-            --notes "✅ Successful production deployment to ${preview_url}" \
-            --target main
