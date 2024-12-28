@@ -1,36 +1,85 @@
 # icon-search.com
 
-Code for icon-search.com, an open source icon search engine.
+A semantic search engine for icons, currently supporting Lucide icons. Built with Next.js, Drizzle ORM, and OpenAI embeddings.
 
-## Get Started
+## Features
+
+- 🔍 Semantic search for icons using natural language
+- 🎯 Version-aware icon tracking
+- 🔐 GitHub OAuth authentication
+- 🌓 Light/dark mode support
+- 🚀 Fully automated CI/CD pipeline
+- 🗄️ PostgreSQL with vector search capabilities
+
+## Tech Stack
+
+- **Framework**: Next.js 14 with App Router
+- **Database**: PostgreSQL with Drizzle ORM
+- **Authentication**: GitHub OAuth
+- **Styling**: Tailwind CSS with shadcn/ui components
+- **AI**: OpenAI embeddings for semantic search
+- **Deployment**: Vercel
+- **Database Hosting**: Neon
+- **Runtime**: Bun
+
+## Local Development
+
+### Prerequisites
+
+- Bun (latest version)
+- PostgreSQL 15+
+- Node.js 18+
+
+### Environment Variables
+
+Create a `.env.local` file that matches `.env.example`.
 
 
-## Todo
+### Setup Instructions
 
+1. Install dependencies:
 
-V1
-- [x] Buy icon-search.com domain
-- [ ] Skeleton shadcn/ui app (select a nav bar and start there)
-- [x] Deploy to Vercel
-- [x] Create new Neon db
-- [x] Setup drizzle and CI/CD
-- [x] Create a new Github oauth app
-- [ ] Setup Auth with lucia
-- [ ] Design db schema
-  - [ ] Users
-  - [ ] Icons (with embeddings)
-- [ ] Generate icon descriptions and embeddings -> seed db
-- [ ] Create a search page (homepage with UI)
-- [ ] Add api calls to db
-- [ ] Rate limit by IP for non-auth users
-- [ ] Add an API route
-- [ ] Add rate limit for API key users
-- [ ] Create backend pages
-    - [ ] Create a dashboard page
-    - [ ] Create a billing page
-    - [ ] Create a settings page
+```bash
+bun install
+```
 
-Other
-- [ ] Determine price per API call
-- [ ] Determine rate limit of the system
-- [ ] Implement global rate limit
+2. Start the database (starts, migrates, seeds):
+
+```bash
+bun run db:reset
+```
+
+3. Start the development server:
+
+```bash
+bun dev
+```
+
+### Database Commands
+
+- `bun run db:generate` - Generate Drizzle schema changes
+- `bun run db:migrate` - Apply migrations
+- `bun run db:push` - Push schema changes to database
+- `bun run db:studio` - Open Drizzle Studio
+- `bun run db:reset` - Reset database (stops, starts, migrates, seeds)
+
+## Contributing
+
+1. Fork the repository
+2. Create a new branch
+3. Make your changes
+4. Submit a pull request
+
+The CI pipeline will automatically:
+- Run linting checks
+- Create a preview deployment
+- Create a preview database branch
+- Run migrations on the preview database
+
+## License
+
+MIT License - See LICENSE file for details
+
+## Support
+
+For support, please open an issue on GitHub or contact the maintainers.
