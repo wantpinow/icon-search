@@ -99,6 +99,7 @@ export const suggestIconsAction = publicAction
     const res = await db
       .select({
         name: iconTable.name,
+        description: iconTable.description,
       })
       .from(iconVersionTable)
       .where(
@@ -113,7 +114,7 @@ export const suggestIconsAction = publicAction
       .limit(Math.max(limit, 50));
     console.timeEnd("Getting similarity");
     const iconNames = res.map((r) => r.name);
-
+    const iconDescriptions = res.map((r) => r.description);
     let result: string[];
 
     if (mode === "semantic") {
@@ -123,9 +124,9 @@ export const suggestIconsAction = publicAction
       console.time("Reranking");
       try {
         if (mode === "top-1") {
-          result = await rerankTop1(query, iconNames, limit);
+          result = await rerankTop1(query, iconNames, iconDescriptions, limit);
         } else if (mode === "top-k") {
-          result = await rerankTopK(query, iconNames, limit);
+          result = await rerankTopK(query, iconNames, iconDescriptions, limit);
         } else {
           throw new ActionError("Invalid reranking mode");
         }
@@ -155,35 +156,102 @@ export const suggestIconsAction = publicAction
     return result;
   });
 
+const RERANK_TOP_1_SYSTEM_PROMPT = `You are an expert content creator and designer. You are given a user query and a list of icons and their descriptions. You are tasked with selecting the most relevant icon for the query. Here are some tips to help you select the best icon:
+
+1. If the query is generic, suggest a generic icon.
+2. If the query is specific, suggest a specific icon.
+3. Don't recommend brand icons unless the query asks for one.
+4. Try not to suggest icons that are used for navigation or other non-content purposes, unless the query asks for one.
+5. Return the name of the icon that is most relevant to the query.
+6. Return the exact name of your chosen icon, nothing else.
+7. Do not make up your own icon names, only return one of the provided icon names.
+
+You will be given a set of candidate icons and their descriptions, followed by a user query. You will then return the name of the icon that is most relevant to the query. Return the exact name of your chosen icon, nothing else.`;
+
 const rerankTop1 = async (
   query: string,
   iconNames: string[],
+  iconDescriptions: string[],
   limit: number,
 ) => {
-  const { object } = await generateObject({
-    model: openai("gpt-4o"),
+  const { object, usage } = await generateObject({
+    model: openai("gpt-4o-mini"),
     output: "enum",
     enum: iconNames,
-    prompt: `Suggest a single icon for the query "${query}". Here are some tips to help you select the best icon:\n1. If the query is generic, suggest a generic icon.\n2. If the query is specific, suggest a specific icon.\n3. Don't recommend brand icons unless the query asks for one.\n4. Try not to suggest icons that are used for navigation or other non-content purposes, unless the query asks for one.`,
+    messages: [
+      {
+        role: "system",
+        content: RERANK_TOP_1_SYSTEM_PROMPT,
+      },
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: `Available icons and their descriptions:\n ${iconNames.map((name, index) => `${name}: ${iconDescriptions[index]}`).join("\n")}`,
+          },
+          {
+            type: "text",
+            text: `User query: ${query}`,
+          },
+        ],
+      },
+    ],
     temperature: 0,
   });
+  console.log(usage);
   if (!iconNames.includes(object)) {
     throw new ActionError("Could not generate icons with the proper names");
   }
   return [object, ...iconNames.filter((i) => i !== object)].slice(0, limit);
 };
 
+const RERANK_TOP_K_SYSTEM_PROMPT = `You are an expert content creator and designer. You are given a user query and a list of icons with descriptions. You must select exactly {limit} icons that best match the query, following these guidelines:
+
+1. If the query is generic, suggest generic icons.
+2. If the query is specific, suggest specific icons.
+3. Don't recommend brand icons unless the query asks for them.
+4. Avoid icons primarily for navigation or non-content purposes unless requested.
+5. Return only the n most relevant icons, each as its exact name from the provided list.
+6. Do not invent new icon names; only use those given.
+7. Return the icon names as an array of strings, with no extra text or explanation.
+8. Return the icon names in the order of relevance to the query.
+9. Return exactly {limit} icons.`;
+
 const rerankTopK = async (
   query: string,
   iconNames: string[],
+  iconDescriptions: string[],
   limit: number,
 ) => {
-  const { object } = await generateObject({
-    model: openai("gpt-4o"),
+  const { object, usage } = await generateObject({
+    model: openai("gpt-4o-mini"),
     output: "array",
     schema: z.enum(iconNames as [string, ...string[]]),
-    prompt: `Suggest ${limit} icons for the query "${query}". Here are some tips to help you select the best icons:\n1. If the query is generic, suggest generic icons.\n2. If the query is specific, suggest specific icons.\n3. Don't recommend brand icons unless the query asks for one.\n4. Try not to suggest icons that are used for navigation or other non-content purposes, unless the query asks for one.\n5. Suggest exactly ${limit} icons.\n6. Return the icons in the order of relevance to the query.`,
+    messages: [
+      {
+        role: "system",
+        content: RERANK_TOP_K_SYSTEM_PROMPT.replace(
+          "{limit}",
+          limit.toString(),
+        ),
+      },
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: `Available icons and their descriptions:\n ${iconNames.map((name, index) => `${name}: ${iconDescriptions[index]}`).join("\n")}`,
+          },
+          {
+            type: "text",
+            text: `User query: ${query}`,
+          },
+        ],
+      },
+    ],
   });
+  console.log(usage);
   if (object.some((i) => !iconNames.includes(i))) {
     throw new ActionError("Could not generate icons with the proper names");
   }

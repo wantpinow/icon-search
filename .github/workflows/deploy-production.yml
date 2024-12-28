@@ -23,7 +23,7 @@ jobs:
     permissions: write-all
     runs-on: ubuntu-latest
     environment:
-      name: Preview
+      name: Production
       url: ${{ steps.deploy.outputs.preview_url }}
     steps:
       - name: Checkout Repository

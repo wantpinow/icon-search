@@ -14,6 +14,7 @@ versions=($(echo "${versions[@]}" | tr ' ' '\n' | grep -vE 'alpha|beta' | tr '\n
 
 # Don't process 0.0.1
 versions=($(echo "${versions[@]}" | tr ' ' '\n' | grep -vE '0.0.1' | tr '\n' ' '))
+
 # Iterate through each version
 for version in "${versions[@]}"; do
     echo "Processing version: $version"

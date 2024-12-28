@@ -1,6 +1,9 @@
-import { and, desc, eq, gte, inArray, lt, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import { embedMany, generateText } from "ai";
+import React from "react";
+import { renderToString } from "react-dom/server";
 import { openai } from "@ai-sdk/openai";
+import cliProgress from "cli-progress";
 
 import {
   iconTable,
@@ -11,6 +14,7 @@ import { IconType } from "~/types/icons";
 import { db } from "~/server/db";
 
 import * as lucide from "lucide-react";
+import sharp from "sharp";
 
 // remove anything from `lucide` that doesn't start with an uppercase letter
 let lucideIcons: string[];
@@ -24,7 +28,6 @@ if (lucide.icons) {
     (key) => key[0] === key[0].toUpperCase(),
   );
 }
-
 const args = process.argv.slice(2); // Get just the custom arguments
 
 const iconType = args[0];
@@ -46,21 +49,91 @@ const embedTexts = async (texts: string[]) => {
   return embeddings.embeddings;
 };
 
-const getIconDescriptions = async (icons: string[]) => {
-  return icons;
+const ICON_DESCRIPTION_SYSTEM_PROMPT = `You are a helpful assistant that can describe icons, given a name and an image of the icon. You will be provided with the name of the icon and a visual reference (or image). Your task is to:
 
-  // Generate a concise, use-case-driven description for the Lucide icon "Pencil". Focus on the practical applications or scenarios where this icon would be used, rather than an in-depth visual description of the icon itself. Ensure the description is rich in potential search query relevance, emphasizing the icon’s function or purpose in real-world contexts. For example, describe how or where the icon might be applied in user interfaces, documentation, or designs.
-  const descriptions = [];
-  for (const icon of icons) {
-    const res = await generateText({
-      model: openai.chat("gpt-4o-mini"),
-      prompt: `Generate a concise, use-case-driven description for the Lucide icon "${icon}". Focus on the practical applications or scenarios where this icon would be used, rather than an in-depth visual description of the icon itself. Ensure the description is rich in potential search query relevance, emphasizing the icon’s function or purpose in real-world contexts. For example, describe how or where the icon might be applied in user interfaces, documentation, or designs.`,
-      maxTokens: 256,
-    });
-    descriptions.push(res.text);
+1. Start with the name of the icon, followed by a short sentence describing its appearance.
+2. Provide a concise, use-case-driven description focusing on how and where the icon would be used. Avoid extensive visual details—prioritize practical applications and real-world contexts (e.g., software interfaces, documentation, dashboards, etc.).
+3. Ensure the description is rich in potential search query relevance and highlights the icon's function or purpose rather than just its aesthetics.
+
+Below are examples of good descriptions for different icons:
+
+- ArrowBigDownDash Icon: A large downward-pointing arrow with a dashed line in its stem. Indicates downloads, downward navigation, or additional content, guiding users toward file transfers, scrolling, or important items below the current view.
+- Gauge Icon: A circular dial with a needle set against incremental markings. Shows performance, speed, or progress at a glance, used in dashboards, monitoring tools, and project management interfaces for quick status assessments.
+- TowerControl Icon: A tall tower silhouette with a control deck near the top. Represents an air traffic control tower, symbolizing communication, coordination, and oversight in aviation software, flight simulators, and airport management tools.
+- Volume1 Icon: A speaker silhouette accompanied by a single sound wave. Indicates a moderate audio level, used in media players, audio settings, and interfaces where users need discreet volume control.
+
+Follow this format when generating icon descriptions. DO NOT include symbols such as ** or * surrounding the icon name.`;
+
+const generateIconDescription = async (icon: string, iconSvg: string) => {
+  const jpegBuffer = await sharp(Buffer.from(iconSvg))
+    .resize(96, 96)
+    .flatten({ background: "#ffffff" }) // Add white background
+    .jpeg()
+    .toBuffer();
+  const res = await generateText({
+    model: openai.chat("gpt-4o"),
+    messages: [
+      {
+        role: "system",
+        content: ICON_DESCRIPTION_SYSTEM_PROMPT,
+      },
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: `Icon Name: ${icon}`,
+          },
+          {
+            type: "image",
+            image: jpegBuffer,
+          },
+        ],
+      },
+    ],
+    maxTokens: 256,
+  });
+  return res.text;
+};
+
+const getIconDescriptions = async (icons: string[], svgStrings: string[]) => {
+  const descriptions: string[] = new Array(icons.length);
+  const batchSize = 20;
+
+  // Create a progress bar
+  const progressBar = new cliProgress.SingleBar({
+    format:
+      "Generating icon descriptions |{bar}| {percentage}% | {value}/{total} icons",
+    barCompleteChar: "=",
+    barIncompleteChar: " ",
+  });
+
+  // Start the progress bar
+  progressBar.start(icons.length, 0);
+  let completed = 0;
+
+  // Process icons in batches
+  for (let i = 0; i < icons.length; i += batchSize) {
+    const batch = icons.slice(i, i + batchSize);
+    const batchSvgs = svgStrings.slice(i, i + batchSize);
+
+    const batchPromises = batch.map((icon, index) =>
+      generateIconDescription(icon, batchSvgs[index]!).then((description) => {
+        const position = i + index;
+        descriptions[position] = description;
+        completed++;
+        progressBar.update(completed);
+      }),
+    );
+    await Promise.all(batchPromises);
   }
+
+  // Stop the progress bar
+  progressBar.stop();
+
   return descriptions;
 };
+
 const processLucideIcons = async (type: IconType, version: string) => {
   // check this version has already been processed
   const existingVersion = await db.query.packageVersionTable.findFirst({
@@ -122,12 +195,19 @@ const processLucideIcons = async (type: IconType, version: string) => {
   const newIconsToInsert = lucideIcons.filter(
     (icon) => !existingIcons.map((i) => i.name).includes(icon),
   );
-
-  // get embeddings of new icons
-  const newIconsEmbeddings = await embedTexts(newIconsToInsert);
+  const newIconsSvgStrings = newIconsToInsert.map((icon) =>
+    // @ts-expect-error
+    renderToString(React.createElement(lucide[icon])),
+  );
 
   // get descriptions of new icons
-  const newIconsDescriptions = await getIconDescriptions(newIconsToInsert);
+  const newIconsDescriptions = await getIconDescriptions(
+    newIconsToInsert,
+    newIconsSvgStrings,
+  );
+
+  // get embeddings of new icons
+  const newIconsEmbeddings = await embedTexts(newIconsDescriptions);
 
   // insert the new icons
   const newIcons =
@@ -147,7 +227,7 @@ const processLucideIcons = async (type: IconType, version: string) => {
 
   const allIcons = [...existingIcons, ...newIcons];
 
-  //   get all icon ranges with the max equal to previous version number
+  // get all icon ranges with the max equal to previous version number
   const existingIconRanges =
     versionNumber === 1
       ? []
@@ -198,10 +278,3 @@ processLucideIcons(iconType as IconType, version)
     console.error(error);
     process.exit(1);
   });
-
-// console.log(Object.keys(lucide.icons).length);
-
-// export const processLucideIcons = async () => {
-//   const icons = Object.keys(lucide.icons);
-//   console.log(icons.length);
-// };
