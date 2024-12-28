@@ -18,7 +18,7 @@ export function Favicon() {
           alignItems: "center",
           justifyContent: "center",
           color: "black",
-          borderRadius: 10000,
+          borderRadius: 20,
         }}
       >
         <svg
@@ -26,16 +26,18 @@ export function Favicon() {
           width="384"
           height="384"
           viewBox="0 0 24 24"
-          fill="black"
+          fill="transparent"
           stroke="currentColor"
           stroke-width="2"
           stroke-linecap="round"
           stroke-linejoin="round"
           className="lucide lucide-shapes"
         >
-          <path d="M8.3 10a.7.7 0 0 1-.626-1.079L11.4 3a.7.7 0 0 1 1.198-.043L16.3 8.9a.7.7 0 0 1-.572 1.1Z" />
-          <rect x="3" y="14" width="7" height="7" rx="1" />
-          <circle cx="17.5" cy="17.5" r="3.5" />
+          <path d="M21 6H3" />
+          <path d="M10 12H3" />
+          <path d="M10 18H3" />
+          <circle cx="17" cy="15" r="3" />
+          <path d="m21 19-1.9-1.9" />
         </svg>
       </div>
     ),

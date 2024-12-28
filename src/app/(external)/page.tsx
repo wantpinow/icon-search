@@ -13,8 +13,8 @@ export default async function HomePage() {
           Find the Right Icon, Fast
         </h1>
         <p className="max-w-[600px] text-lg text-muted-foreground md:text-xl">
-          Search for the perfect Lucide icon in seconds. Integrate in your
-          project in minutes via our API.
+          Search for the perfect Lucide icon in seconds. Integrate your project
+          in minutes via the API.
         </p>
       </div>
       <SuggestIcons versions={versions.data} />

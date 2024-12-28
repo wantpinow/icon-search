@@ -109,7 +109,13 @@ export function SuggestIconsForm({
                     <SelectContent align="end">
                       {versions.map((v, i) => (
                         <SelectItem key={i} value={v}>
-                          {i === 0 ? `Latest (${v})` : v}
+                          {i === 0 && (
+                            <span className="hidden md:inline">Latest (</span>
+                          )}
+                          <span>{v}</span>
+                          {i === 0 && (
+                            <span className="hidden md:inline">) </span>
+                          )}
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -5,7 +5,7 @@ import { cn } from "~/lib/utils";
 export function ExternalFooter({ className }: { className?: string }) {
   return (
     <div className={cn("border-t py-12", className)}>
-      <div className="container mx-auto flex items-center justify-between">
+      <div className="container mx-auto flex flex-col items-center justify-between gap-4 md:flex-row">
         <div className="text-center text-sm">
           Built with ❤️ by{" "}
           <Link
@@ -16,7 +16,7 @@ export function ExternalFooter({ className }: { className?: string }) {
             @wantpinow
           </Link>
         </div>
-        <div>
+        <div className="hidden md:inline-flex">
           <Button variant="link" asChild>
             <Link href="/privacy-policy">Privacy Policy</Link>
           </Button>
