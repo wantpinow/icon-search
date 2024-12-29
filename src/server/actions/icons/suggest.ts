@@ -8,6 +8,7 @@ import { db } from "~/server/db";
 import { ActionError, publicAction } from "~/server/actions";
 import { suggestIconsSchema } from "./schemas";
 import {
+  apiKeyTable,
   iconSuggestionRequestsTable,
   iconTable,
   iconVersionTable,
@@ -15,6 +16,7 @@ import {
 } from "~/server/db/schema";
 import { z } from "zod";
 import { headers } from "next/headers";
+import { hashApiKey } from "../keys/utils";
 
 export async function getIPAddress() {
   return headers().get("x-forwarded-for");
@@ -25,136 +27,177 @@ const UNAUTHENTICATED_REQUEST_TIME_FRAME = 60;
 const UNAUTHENTICATED_REQUEST_LIMIT = 10;
 
 export const suggestIconsAction = publicAction
-  .schema(suggestIconsSchema)
-  .action(async ({ parsedInput: { query, type, version, limit, mode } }) => {
-    // get the ip address
-    const ipAddress = await getIPAddress();
-    if (!ipAddress) {
-      throw new ActionError("Could not get IP address");
-    }
-    console.log(`IP Address: ${ipAddress}`);
+  .schema(
+    suggestIconsSchema.extend({
+      apiKey: z.string().optional(),
+    }),
+  )
+  .action(
+    async ({ parsedInput: { query, type, version, limit, mode, apiKey } }) => {
+      let ipAddress: string | undefined;
+      let apiKeyId: string | undefined;
+      if (apiKey) {
+        // hash the api key
+        const hashedApiKey = hashApiKey(apiKey);
+        console.log(`Hashed API key: ${hashedApiKey}`);
 
-    // check rate limit
-    const [rateLimitRes] = await db
-      .select({ count: sql`count(*)`.mapWith(Number) })
-      .from(iconSuggestionRequestsTable)
-      .where(
-        and(
-          eq(iconSuggestionRequestsTable.ipAddress, ipAddress),
-          gte(
-            iconSuggestionRequestsTable.datetime,
-            sql`CURRENT_TIMESTAMP - INTERVAL '${sql.raw(UNAUTHENTICATED_REQUEST_TIME_FRAME.toString())} seconds'`,
+        // check the api key
+        const apiKeyRes = await db.query.apiKeyTable.findFirst({
+          where: and(
+            eq(apiKeyTable.keyHash, hashedApiKey),
+            eq(apiKeyTable.revoked, false),
           ),
-        ),
-      );
-    if (
-      rateLimitRes === undefined ||
-      rateLimitRes.count >= UNAUTHENTICATED_REQUEST_LIMIT
-    ) {
-      throw new ActionError(
-        `Rate limit exceeded, only allowed ${UNAUTHENTICATED_REQUEST_LIMIT} requests per ${UNAUTHENTICATED_REQUEST_TIME_FRAME} seconds`,
-      );
-    }
-
-    // get the version number
-    console.time("Getting version number");
-    let versionNumber;
-    if (version) {
-      // get the version number from the version string
-      const versionNumberRes = await db.query.packageVersionTable.findFirst({
-        where: and(
-          eq(packageVersionTable.type, type),
-          eq(packageVersionTable.version, version),
-        ),
-        orderBy: desc(packageVersionTable.versionNumber),
-      });
-      if (!versionNumberRes) {
-        throw new ActionError(`Version ${version} not found for type ${type}`);
-      }
-      versionNumber = versionNumberRes.versionNumber;
-    } else {
-      // get the latest version number
-      const versionNumberRes = await db.query.packageVersionTable.findFirst({
-        where: eq(packageVersionTable.type, type),
-        orderBy: desc(packageVersionTable.versionNumber),
-      });
-      if (!versionNumberRes) {
-        throw new ActionError(`No versions found for type ${type}`);
-      }
-      versionNumber = versionNumberRes.versionNumber;
-    }
-    console.timeEnd("Getting version number");
-
-    // get the embedding for the query
-    console.time("Getting embedding");
-    const { embedding } = await embed({
-      model: openai.embedding("text-embedding-3-small"),
-      value: `Suggest icons for the query "${query}"`,
-    });
-    console.timeEnd("Getting embedding");
-
-    // get the similarity between the query and the icons
-    console.time("Getting similarity");
-    const similarity = sql<number>`1 - (${cosineDistance(iconTable.embedding, embedding)})`;
-    const res = await db
-      .select({
-        name: iconTable.name,
-        description: iconTable.description,
-      })
-      .from(iconVersionTable)
-      .where(
-        and(
-          eq(iconVersionTable.type, type),
-          lte(iconVersionTable.rangeStart, versionNumber),
-          gte(iconVersionTable.rangeEnd, versionNumber),
-        ),
-      )
-      .innerJoin(iconTable, eq(iconTable.id, iconVersionTable.iconId))
-      .orderBy(desc(similarity))
-      .limit(Math.max(limit, 50));
-    console.timeEnd("Getting similarity");
-    const iconNames = res.map((r) => r.name);
-    const iconDescriptions = res.map((r) => r.description);
-    let result: string[];
-
-    if (mode === "semantic") {
-      result = iconNames.slice(0, limit);
-    } else {
-      // rerank with gpt-4o
-      console.time("Reranking");
-      try {
-        if (mode === "top-1") {
-          result = await rerankTop1(query, iconNames, iconDescriptions, limit);
-        } else if (mode === "top-k") {
-          result = await rerankTopK(query, iconNames, iconDescriptions, limit);
-        } else {
-          throw new ActionError("Invalid reranking mode");
+        });
+        if (!apiKeyRes) {
+          throw new ActionError("Invalid API key");
         }
-        console.timeEnd("Reranking");
-      } catch (error) {
-        console.timeEnd("Reranking");
-        if (error instanceof TypeValidationError) {
-          // @ts-expect-error - Value property is not typed in TypeValidationError but exists at runtime
-          console.log(`Could not generate icon:${error.value.result}`);
-          throw new ActionError("No icon found for the query");
+        apiKeyId = apiKeyRes.id;
+
+        // todo: check rate limits
+      } else {
+        // get the ip address
+        ipAddress = (await getIPAddress()) ?? undefined;
+        if (!ipAddress) {
+          throw new ActionError("Could not get IP address");
         }
-        throw error;
+        console.log(`IP Address: ${ipAddress}`);
+
+        // check rate limit
+        const [rateLimitRes] = await db
+          .select({ count: sql`count(*)`.mapWith(Number) })
+          .from(iconSuggestionRequestsTable)
+          .where(
+            and(
+              eq(iconSuggestionRequestsTable.ipAddress, ipAddress),
+              gte(
+                iconSuggestionRequestsTable.datetime,
+                sql`CURRENT_TIMESTAMP - INTERVAL '${sql.raw(UNAUTHENTICATED_REQUEST_TIME_FRAME.toString())} seconds'`,
+              ),
+            ),
+          );
+        if (
+          rateLimitRes === undefined ||
+          rateLimitRes.count >= UNAUTHENTICATED_REQUEST_LIMIT
+        ) {
+          throw new ActionError(
+            `Rate limit exceeded, only allowed ${UNAUTHENTICATED_REQUEST_LIMIT} requests per ${UNAUTHENTICATED_REQUEST_TIME_FRAME} seconds`,
+          );
+        }
       }
-    }
 
-    // insert the request into the database
-    await db.insert(iconSuggestionRequestsTable).values({
-      ipAddress,
-      query,
-      mode,
-      type,
-      versionNumber,
-      limit,
-      result,
-    });
+      // get the version number
+      console.time("Getting version number");
+      let versionNumber;
+      if (version) {
+        // get the version number from the version string
+        const versionNumberRes = await db.query.packageVersionTable.findFirst({
+          where: and(
+            eq(packageVersionTable.type, type),
+            eq(packageVersionTable.version, version),
+          ),
+          orderBy: desc(packageVersionTable.versionNumber),
+        });
+        if (!versionNumberRes) {
+          throw new ActionError(
+            `Version ${version} not found for type ${type}`,
+          );
+        }
+        versionNumber = versionNumberRes.versionNumber;
+      } else {
+        // get the latest version number
+        const versionNumberRes = await db.query.packageVersionTable.findFirst({
+          where: eq(packageVersionTable.type, type),
+          orderBy: desc(packageVersionTable.versionNumber),
+        });
+        if (!versionNumberRes) {
+          throw new ActionError(`No versions found for type ${type}`);
+        }
+        versionNumber = versionNumberRes.versionNumber;
+      }
+      console.timeEnd("Getting version number");
 
-    return result;
-  });
+      // get the embedding for the query
+      console.time("Getting embedding");
+      const { embedding } = await embed({
+        model: openai.embedding("text-embedding-3-small"),
+        value: `Suggest icons for the query "${query}"`,
+      });
+      console.timeEnd("Getting embedding");
+
+      // get the similarity between the query and the icons
+      console.time("Getting similarity");
+      const similarity = sql<number>`1 - (${cosineDistance(iconTable.embedding, embedding)})`;
+      const res = await db
+        .select({
+          name: iconTable.name,
+          description: iconTable.description,
+        })
+        .from(iconVersionTable)
+        .where(
+          and(
+            eq(iconVersionTable.type, type),
+            lte(iconVersionTable.rangeStart, versionNumber),
+            gte(iconVersionTable.rangeEnd, versionNumber),
+          ),
+        )
+        .innerJoin(iconTable, eq(iconTable.id, iconVersionTable.iconId))
+        .orderBy(desc(similarity))
+        .limit(Math.max(limit, 50));
+      console.timeEnd("Getting similarity");
+      const iconNames = res.map((r) => r.name);
+      const iconDescriptions = res.map((r) => r.description);
+      let result: string[];
+
+      if (mode === "semantic") {
+        result = iconNames.slice(0, limit);
+      } else {
+        // rerank with gpt-4o
+        console.time("Reranking");
+        try {
+          if (mode === "top-1") {
+            result = await rerankTop1(
+              query,
+              iconNames,
+              iconDescriptions,
+              limit,
+            );
+          } else if (mode === "top-k") {
+            result = await rerankTopK(
+              query,
+              iconNames,
+              iconDescriptions,
+              limit,
+            );
+          } else {
+            throw new ActionError("Invalid reranking mode");
+          }
+          console.timeEnd("Reranking");
+        } catch (error) {
+          console.timeEnd("Reranking");
+          if (error instanceof TypeValidationError) {
+            // @ts-expect-error - Value property is not typed in TypeValidationError but exists at runtime
+            console.log(`Could not generate icon:${error.value.result}`);
+            throw new ActionError("No icon found for the query");
+          }
+          throw error;
+        }
+      }
+
+      // insert the request into the database
+      await db.insert(iconSuggestionRequestsTable).values({
+        ipAddress,
+        apiKeyId,
+        query,
+        mode,
+        type,
+        versionNumber,
+        limit,
+        result,
+      });
+
+      return result;
+    },
+  );
 
 const RERANK_TOP_1_SYSTEM_PROMPT = `You are an expert content creator and designer. You are given a user query and a list of icons and their descriptions. You are tasked with selecting the most relevant icon for the query. Here are some tips to help you select the best icon:
 

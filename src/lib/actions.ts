@@ -14,10 +14,9 @@ export async function logout(): Promise<LogoutActionResult> {
       error: "Unauthorized",
     };
   }
-
   await invalidateSession(session.id);
   await deleteSessionTokenCookie();
-  return redirect("/login");
+  return redirect("/");
 }
 
 interface LogoutActionResult {

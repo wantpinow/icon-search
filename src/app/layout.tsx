@@ -4,7 +4,6 @@ import { GeistSans } from "geist/font/sans";
 import { type Metadata, type Viewport } from "next";
 import { Toaster } from "~/components/ui/sonner";
 import { cn } from "~/lib/utils";
-import { ThemeProvider } from "~/components/theme/provider";
 
 export const metadata: Metadata = {
   title: "Icon Search",
@@ -28,14 +27,8 @@ export default async function RootLayout({
       translate="no"
     >
       <body>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          disableTransitionOnChange
-        >
-          {children}
-          <Toaster />
-        </ThemeProvider>
+        {children}
+        <Toaster />
       </body>
     </html>
   );

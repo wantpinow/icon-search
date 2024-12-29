@@ -1,5 +1,6 @@
 import { type InferSelectModel, relations, sql } from "drizzle-orm";
 import {
+  boolean,
   foreignKey,
   index,
   integer,
@@ -153,7 +154,8 @@ export const iconSuggestionRequestsTable = createTable(
     })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
-    ipAddress: text("ip_address").notNull(),
+    ipAddress: text("ip_address"),
+    apiKeyId: uuid("api_key_id"),
     query: text("query").notNull(),
     mode: text("mode").notNull(),
     type: iconTypeEnum("type").notNull(),
@@ -167,9 +169,62 @@ export const iconSuggestionRequestsTable = createTable(
       datetimeIndex: index("datetime_index").on(table.datetime),
       // create an index on the ipAddress column
       ipAddressIndex: index("ip_address_index").on(table.ipAddress),
+      apiKeyReference: foreignKey({
+        columns: [table.apiKeyId],
+        foreignColumns: [apiKeyTable.id],
+        name: "icon_suggestion_requests_api_key_fkey",
+      }),
     };
   },
 );
+
+export const iconSuggestionRequestsTableRelations = relations(
+  iconSuggestionRequestsTable,
+  ({ one }) => ({
+    apiKey: one(apiKeyTable, {
+      fields: [iconSuggestionRequestsTable.apiKeyId],
+      references: [apiKeyTable.id],
+    }),
+  }),
+);
+
+export const apiKeyTable = createTable(
+  "api_key",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    name: text("name").notNull(),
+    keyHash: text("key_hash").notNull(),
+    createdAt: timestamp("created_at", {
+      withTimezone: true,
+    })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp("updated_at", {
+      withTimezone: true,
+    })
+      .$onUpdate(() => new Date())
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    revoked: boolean("revoked").notNull().default(false),
+    revokedAt: timestamp("revoked_at", {
+      withTimezone: true,
+    }),
+  },
+  (table) => {
+    return {
+      userReference: foreignKey({
+        columns: [table.userId],
+        foreignColumns: [userTable.id],
+        name: "api_key_user_fkey",
+      }),
+    };
+  },
+);
+
+export const apiKeyTableRelations = relations(apiKeyTable, ({ many }) => ({
+  iconSuggestionRequests: many(iconSuggestionRequestsTable),
+}));
 
 // Types
 export type User = InferSelectModel<typeof userTable>;
