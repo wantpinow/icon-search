@@ -14,6 +14,7 @@ import {
   varchar,
   vector,
 } from "drizzle-orm/pg-core";
+import { PLAN_IDS } from "~/config/plans";
 
 import { PG_TABLE_PREFIX } from "~/server";
 import { ICON_TYPES } from "~/types/icons";
@@ -22,12 +23,16 @@ export const createTable = pgTableCreator(
   (name) => `${PG_TABLE_PREFIX}${name}`,
 );
 
+export const planIdEnum = pgEnum("plan_id", PLAN_IDS);
+
 // Authentication
 export const userTable = createTable("user", {
   id: uuid("id").defaultRandom().primaryKey(),
   githubId: text("github_id").unique(),
   email: varchar("email", { length: 256 }).unique().notNull(),
   username: varchar("username", { length: 256 }).unique().notNull(),
+  avatarUrl: text("avatar_url").notNull(),
+  planId: planIdEnum("plan_id").notNull().default("free"),
   createdAt: timestamp("created_at", {
     withTimezone: true,
   })
@@ -40,6 +45,10 @@ export const userTable = createTable("user", {
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
 });
+
+export const userTableRelations = relations(userTable, ({ many }) => ({
+  apiKeys: many(apiKeyTable),
+}));
 
 export const sessionTable = createTable(
   "session",
@@ -130,7 +139,9 @@ export const iconVersionTable = createTable(
         columns: [table.iconId],
         foreignColumns: [iconTable.id],
         name: "icon_version_icon_fkey",
-      }),
+      })
+        .onDelete("cascade")
+        .onUpdate("cascade"),
     };
   },
 );
@@ -173,7 +184,9 @@ export const iconSuggestionRequestsTable = createTable(
         columns: [table.apiKeyId],
         foreignColumns: [apiKeyTable.id],
         name: "icon_suggestion_requests_api_key_fkey",
-      }),
+      })
+        .onDelete("cascade")
+        .onUpdate("cascade"),
     };
   },
 );
@@ -217,13 +230,19 @@ export const apiKeyTable = createTable(
         columns: [table.userId],
         foreignColumns: [userTable.id],
         name: "api_key_user_fkey",
-      }),
+      })
+        .onDelete("cascade")
+        .onUpdate("cascade"),
     };
   },
 );
 
-export const apiKeyTableRelations = relations(apiKeyTable, ({ many }) => ({
+export const apiKeyTableRelations = relations(apiKeyTable, ({ many, one }) => ({
   iconSuggestionRequests: many(iconSuggestionRequestsTable),
+  user: one(userTable, {
+    fields: [apiKeyTable.userId],
+    references: [userTable.id],
+  }),
 }));
 
 // Types

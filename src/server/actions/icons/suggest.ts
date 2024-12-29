@@ -17,6 +17,7 @@ import {
 import { z } from "zod";
 import { headers } from "next/headers";
 import { hashApiKey } from "../keys/utils";
+import { plans } from "~/config/plans";
 
 export async function getIPAddress() {
   return headers().get("x-forwarded-for");
@@ -25,6 +26,13 @@ export async function getIPAddress() {
 // 10 requests per minute for unauthenticated requests
 const UNAUTHENTICATED_REQUEST_TIME_FRAME = 60;
 const UNAUTHENTICATED_REQUEST_LIMIT = 10;
+
+const freeTierMonthlyRequests = plans.find(
+  (p) => p.id === "free",
+)?.monthlyRequests;
+if (freeTierMonthlyRequests === undefined) {
+  throw new Error("Free tier monthly requests not found");
+}
 
 export const suggestIconsAction = publicAction
   .schema(
@@ -47,13 +55,48 @@ export const suggestIconsAction = publicAction
             eq(apiKeyTable.keyHash, hashedApiKey),
             eq(apiKeyTable.revoked, false),
           ),
+          with: {
+            user: {
+              columns: {
+                id: true,
+                planId: true,
+              },
+            },
+          },
         });
         if (!apiKeyRes) {
           throw new ActionError("Invalid API key");
         }
         apiKeyId = apiKeyRes.id;
 
-        // todo: check rate limits
+        // check rate limits for free and pro plans
+        const userPlan = apiKeyRes.user.planId;
+        if (userPlan === "free") {
+          const [usageRes] = await db
+            .select({ count: sql`count(*)`.mapWith(Number) })
+            .from(iconSuggestionRequestsTable)
+            .leftJoin(
+              apiKeyTable,
+              eq(apiKeyTable.id, iconSuggestionRequestsTable.apiKeyId),
+            )
+            .where(
+              and(
+                eq(apiKeyTable.userId, apiKeyRes.user.id),
+                gte(
+                  iconSuggestionRequestsTable.datetime,
+                  sql`CURRENT_TIMESTAMP - INTERVAL '1 month'`,
+                ),
+              ),
+            );
+          if (usageRes === undefined) {
+            throw new ActionError("Could not get user usage");
+          }
+          if (usageRes.count >= freeTierMonthlyRequests) {
+            throw new ActionError("Free plan rate limit exceeded");
+          }
+        } else if (userPlan === "pro") {
+          throw new ActionError("Pro plan not implemented");
+        }
       } else {
         // get the ip address
         ipAddress = (await getIPAddress()) ?? undefined;

@@ -17,6 +17,7 @@ export async function createUserFromGitHubId(
   githubUserId: number,
   githubUsername: string,
   githubEmail: string,
+  githubAvatarUrl: string,
 ): Promise<User> {
   const [user] = await db
     .insert(userTable)
@@ -24,6 +25,7 @@ export async function createUserFromGitHubId(
       githubId: githubUserId.toString(),
       username: githubUsername,
       email: githubEmail,
+      avatarUrl: githubAvatarUrl,
     })
     .returning();
   if (!user) {

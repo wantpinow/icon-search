@@ -46,7 +46,7 @@ export async function GET(request: Request): Promise<Response> {
   const githubUserId = githubUser.id;
   const githubUsername = githubUser.login;
   const githubEmail = githubUser.email;
-
+  const githubAvatarUrl = githubUser.avatar_url;
   const existingUser = await getUserFromGitHubId(githubUserId);
 
   if (existingUser !== null) {
@@ -65,6 +65,7 @@ export async function GET(request: Request): Promise<Response> {
     githubUserId,
     githubUsername,
     githubEmail,
+    githubAvatarUrl,
   );
 
   const sessionToken = generateSessionToken();
@@ -82,4 +83,5 @@ interface GitHubUser {
   id: number;
   email: string;
   login: string;
+  avatar_url: string;
 }

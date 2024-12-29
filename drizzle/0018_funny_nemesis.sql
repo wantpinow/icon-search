@@ -1,0 +1,1 @@
+ALTER TABLE "iconsearch_user" ADD COLUMN "avatar_url" text NOT NULL;

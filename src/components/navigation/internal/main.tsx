@@ -40,36 +40,25 @@ export function InternalSidebarMain() {
       url: "/dashboard",
     },
     {
-      title: "API Keys",
-      icon: "KeyRound",
-      url: "/api-keys",
+      title: "Get Started",
+      icon: "Code",
+      url: "/get-started",
     },
-    // {
-    //   title: "Practice",
-    //   icon: "LayoutGrid",
-    //   items: [
-    //     {
-    //       title: "Vocabulary",
-    //       url: `/${languageCode}`,
-    //     },
-    //     {
-    //       title: "Conversation",
-    //       url: `/${languageCode}/chat`,
-    //     },
-    //   ],
-    //   isActive: true,
-    // },
-    // {
-    //   title: "Lessons",
-    //   icon: "NotebookPen",
-    //   url: `/${languageCode}/lessons`,
-    //   new: true,
-    // },
-    // {
-    //   title: "Preferences",
-    //   icon: "SlidersHorizontal",
-    //   url: `/${languageCode}/preferences`,
-    // },
+    {
+      title: "Settings",
+      icon: "Settings",
+      items: [
+        {
+          title: "API Keys",
+          url: `/api-keys`,
+        },
+        {
+          title: "Billing",
+          url: `/billing`,
+        },
+      ],
+      isActive: true,
+    },
   ];
 
   return (
