@@ -1,4 +1,4 @@
-import { format } from "date-fns";
+import { format, formatDistance, subDays } from "date-fns";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -54,7 +54,9 @@ export async function ApiKeysCard() {
                   <TableCell>{format(key.createdAt, "MMM d, yyyy")}</TableCell>
                   <TableCell>
                     {key.lastUsed
-                      ? format(key.lastUsed, "MMM d, yyyy")
+                      ? formatDistance(key.lastUsed, new Date(), {
+                          addSuffix: true,
+                        })
                       : "Never"}
                   </TableCell>
                   <TableCell>
