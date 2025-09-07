@@ -71,7 +71,7 @@ const generateIconDescription = async (icon: string, iconSvg: string) => {
     .jpeg()
     .toBuffer();
   const res = await generateText({
-    model: openai.chat("gpt-4o"),
+    model: openai.chat("gpt-5"),
     messages: [
       {
         role: "system",

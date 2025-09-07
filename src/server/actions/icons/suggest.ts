@@ -194,7 +194,7 @@ export const suggestIconsAction = publicAction
       if (mode === "semantic") {
         result = iconNames.slice(0, limit);
       } else {
-        // rerank with gpt-4o
+        // rerank with gpt-5
         console.time("Reranking");
         try {
           if (mode === "top-1") {
@@ -261,7 +261,7 @@ const rerankTop1 = async (
   limit: number,
 ) => {
   const { object, usage } = await generateObject({
-    model: openai("gpt-4o-mini"),
+    model: openai("gpt-5"),
     output: "enum",
     enum: iconNames,
     messages: [
@@ -311,7 +311,7 @@ const rerankTopK = async (
   limit: number,
 ) => {
   const { object, usage } = await generateObject({
-    model: openai("gpt-4o-mini"),
+    model: openai("gpt-5"),
     output: "array",
     schema: z.enum(iconNames as [string, ...string[]]),
     messages: [
